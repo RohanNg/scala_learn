@@ -3,6 +3,8 @@ package scalashop
 import org.scalameter._
 import common._
 
+import scala.annotation.tailrec
+
 object VerticalBoxBlurRunner {
 
   val standardConfig = config(
@@ -18,6 +20,7 @@ object VerticalBoxBlurRunner {
     val height = 1080
     val src = new Img(width, height)
     val dst = new Img(width, height)
+
     val seqtime = standardConfig measure {
       VerticalBoxBlur.blur(src, dst, 0, width, radius)
     }
@@ -42,10 +45,17 @@ object VerticalBoxBlur {
    *  Within each column, `blur` traverses the pixels by going from top to
    *  bottom.
    */
-  def blur(src: Img, dst: Img, from: Int, end: Int, radius: Int): Unit = {
-    // TODO implement this method using the `boxBlurKernel` method
-    ???
-  }
+  @tailrec
+  def blur(src: Img, dst: Img, from: Int, end: Int, radius: Int): Unit =
+    if (from >= end) ()
+    else {
+      for ( h <- 0 until src.height) {
+        println("h " + h)
+        dst(from, h) = boxBlurKernel(src, from, h, radius)
+      }
+      blur(src, dst, from + 1, end, radius)
+    }
+
 
   /** Blurs the columns of the source image in parallel using `numTasks` tasks.
    *
@@ -55,7 +65,20 @@ object VerticalBoxBlur {
    */
   def parBlur(src: Img, dst: Img, numTasks: Int, radius: Int): Unit = {
     // TODO implement using the `task` construct and the `blur` method
-    ???
+    val steps = (0 to src.width).by(numTasks).toList
+    val strips = steps.zip(steps.tail ::: List(src.width))
+
+    def loop(strips: List[(Int,Int)]): Unit = strips match {
+      case Nil    => ()
+      case x::xs  => {
+        val computation = task {
+          blur(src, dst, x._1, x._2, radius)
+        }
+        loop(xs)
+        computation.join()
+      }
+    }
+    loop(strips)
   }
 
 }
