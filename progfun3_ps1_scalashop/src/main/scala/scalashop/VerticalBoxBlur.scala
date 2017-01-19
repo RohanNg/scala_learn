@@ -66,7 +66,7 @@ object VerticalBoxBlur {
 
     val div = src.width / numTasks
 
-    val steps = (0 to src.width).by(if (div == 0) 1 else div).toList.init
+    val steps = (0 to src.width).by(if (div == 0) 1 else div).toList.take(numTasks)
     val strips = steps.zip(steps.tail ::: List(src.width))
 
     val finalStrip = if (strips.length == numTasks) strips
