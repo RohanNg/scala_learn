@@ -38,25 +38,16 @@ package object scalashop {
 
   /** Computes the blurred RGBA value of a single pixel of the input image. */
   def boxBlurKernel(src: Img, x: Int, y: Int, radius: Int): RGBA = {
-    val center = src(x,y)
-    var sum: (Long, Long, Long, Long) = (0,0,0,0)
-    val neighborInRadius = math.pow(radius * 2 + 1, 2)
+    var sum: (Int, Int, Int, Int) = (0,0,0,0)
+    var count = 0
     for {
-      yy <- (y - radius) to (y + radius)
-      xx <- (x - radius) to (x + radius)
+      yy: Int <- ((y - radius) to (y + radius)).map(clamp(_, 0, src.height - 1)).toSet
+      xx: Int <- ((x - radius) to (x + radius)).map(clamp(_, 0, src.width - 1)).toSet
     } {
-      println(s"x: ${clamp(xx, 0, src.width)}, y: ${ clamp(yy, 0, src.height)}, img : ${src.toString}")
-      val currentPixel = src(clamp(xx, 0, src.width), clamp(yy, 0, src.height))
+      count += 1
+      val currentPixel = src(xx,yy)
       sum = (sum._1 + red(currentPixel), sum._2 + green(currentPixel), sum._3 + blue(currentPixel), sum._4 + alpha(currentPixel))
     }
-
-    rgba((sum._1/neighborInRadius).toInt, (sum._2/neighborInRadius).toInt, (sum._3/neighborInRadius).toInt, (sum._4/neighborInRadius).toInt)
+    rgba(sum._1/count, sum._2/count, sum._3/count, sum._4/count)
   }
-}
-
-object test extends App {
-  import scalashop._
-  val data = Array(1,1,1,1,1,1,1,1,1)
-  val img = new Img(2,2, data)
-  println(boxBlurKernel(img, 0,0, 2))
 }

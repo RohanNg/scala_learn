@@ -12,7 +12,7 @@ object VerticalBoxBlurRunner {
     Key.exec.maxWarmupRuns -> 10,
     Key.exec.benchRuns -> 10,
     Key.verbose -> true
-  ) withWarmer(new Warmer.Default)
+  ) withWarmer (new Warmer.Default)
 
   def main(args: Array[String]): Unit = {
     val radius = 3
@@ -40,37 +40,43 @@ object VerticalBoxBlurRunner {
 object VerticalBoxBlur {
 
   /** Blurs the columns of the source image `src` into the destination image
-   *  `dst`, starting with `from` and ending with `end` (non-inclusive).
-   *
-   *  Within each column, `blur` traverses the pixels by going from top to
-   *  bottom.
-   */
+    * `dst`, starting with `from` and ending with `end` (non-inclusive).
+    *
+    * Within each column, `blur` traverses the pixels by going from top to
+    * bottom.
+    */
   @tailrec
   def blur(src: Img, dst: Img, from: Int, end: Int, radius: Int): Unit =
-    if (from >= end) ()
-    else {
-      for ( h <- 0 until src.height) {
-        println("h " + h)
-        dst(from, h) = boxBlurKernel(src, from, h, radius)
-      }
-      blur(src, dst, from + 1, end, radius)
+  if (from >= end) ()
+  else {
+    for (h <- 0 until src.height) {
+      dst(from, h) = boxBlurKernel(src, from, h, radius)
     }
+    blur(src, dst, from + 1, end, radius)
+  }
 
 
   /** Blurs the columns of the source image in parallel using `numTasks` tasks.
-   *
-   *  Parallelization is done by stripping the source image `src` into
-   *  `numTasks` separate strips, where each strip is composed of some number of
-   *  columns.
-   */
+    *
+    * Parallelization is done by stripping the source image `src` into
+    * `numTasks` separate strips, where each strip is composed of some number of
+    * columns.
+    */
   def parBlur(src: Img, dst: Img, numTasks: Int, radius: Int): Unit = {
-    // TODO implement using the `task` construct and the `blur` method
-    val steps = (0 to src.width).by(numTasks).toList
+
+    val div = src.width / numTasks
+
+    val steps = (0 to src.width).by(if (div == 0) 1 else div).toList.init
     val strips = steps.zip(steps.tail ::: List(src.width))
 
-    def loop(strips: List[(Int,Int)]): Unit = strips match {
-      case Nil    => ()
-      case x::xs  => {
+    val finalStrip = if (strips.length == numTasks) strips
+    else strips ++ List.fill(numTasks - strips.length)((src.width, src.width))
+
+    assert(numTasks == finalStrip.length, "number of task exercised in parallel should equal " + numTasks)
+
+    def loop(strips: List[(Int, Int)]): Unit = strips match {
+      case Nil => ()
+      case x :: xs => {
         val computation = task {
           blur(src, dst, x._1, x._2, radius)
         }
@@ -78,7 +84,8 @@ object VerticalBoxBlur {
         computation.join()
       }
     }
-    loop(strips)
+
+    loop(finalStrip)
   }
 
 }

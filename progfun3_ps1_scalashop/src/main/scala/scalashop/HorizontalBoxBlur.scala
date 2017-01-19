@@ -44,7 +44,9 @@ object HorizontalBoxBlur {
   def blur(src: Img, dst: Img, from: Int, end: Int, radius: Int): Unit =
     if (from >= end) ()
     else {
-      for (x <- 0 until src.width) { dst(x, from) = boxBlurKernel(src, x, from, radius) }
+      for (x <- 0 until src.width) {
+        dst(x, from) = boxBlurKernel(src, x, from, radius)
+      }
       blur(src, dst, from + 1, end, radius)
     }
 
@@ -55,12 +57,18 @@ object HorizontalBoxBlur {
     * rows.
     */
   def parBlur(src: Img, dst: Img, numTasks: Int, radius: Int): Unit = {
-    val steps = (0 to src.height).by(numTasks).toList
+    val div = src.height / numTasks
+    val steps = (0 to src.height).by(if (div == 0) 1 else div).toList.init
     val strips = steps.zip(steps.tail ::: List(src.height))
 
-    def loop(strips: List[(Int,Int)]): Unit = strips match {
-      case Nil    => ()
-      case x::xs  => {
+    val finalStrip = if (strips.length == numTasks) strips
+    else strips ++ List.fill(numTasks - strips.length)((src.height, src.height))
+
+    assert(numTasks == finalStrip.length, "number of task exercised in parallel should equal " + numTasks)
+
+    def loop(strips: List[(Int, Int)]): Unit = strips match {
+      case Nil => ()
+      case x :: xs => {
         val computation = task {
           blur(src, dst, x._1, x._2, radius)
         }
@@ -68,7 +76,8 @@ object HorizontalBoxBlur {
         computation.join()
       }
     }
-    loop(strips)
+
+    loop(finalStrip)
   }
 
 }
