@@ -1,6 +1,3 @@
-
-import common._
-
 package object scalashop {
 
   /** The value of every pixel is represented as a 32 bit integer. */

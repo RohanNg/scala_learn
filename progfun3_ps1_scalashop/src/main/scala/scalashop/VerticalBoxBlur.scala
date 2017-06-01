@@ -20,7 +20,6 @@ object VerticalBoxBlurRunner {
     val height = 1080
     val src = new Img(width, height)
     val dst = new Img(width, height)
-
     val seqtime = standardConfig measure {
       VerticalBoxBlur.blur(src, dst, 0, width, radius)
     }
@@ -47,13 +46,13 @@ object VerticalBoxBlur {
     */
   @tailrec
   def blur(src: Img, dst: Img, from: Int, end: Int, radius: Int): Unit =
-  if (from >= end) ()
-  else {
-    for (h <- 0 until src.height) {
-      dst(from, h) = boxBlurKernel(src, from, h, radius)
+    if (from >= end) ()
+    else {
+      for (h <- 0 until src.height) {
+        dst(from, h) = boxBlurKernel(src, from, h, radius)
+      }
+      blur(src, dst, from + 1, end, radius)
     }
-    blur(src, dst, from + 1, end, radius)
-  }
 
 
   /** Blurs the columns of the source image in parallel using `numTasks` tasks.
